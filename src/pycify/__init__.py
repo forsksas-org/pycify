@@ -11,13 +11,19 @@ def yellow(string: str, /) -> str:
     return f"\033[33m{string}\033[m"
 
 
-def replace_py_with_pyc(folder: str, out_folder: str | None = None) -> list[str]:
+def replace_py_with_pyc(folder: str,
+                        out_folder: str | None = None,
+                        optimize: str | None = None) -> list[str]:
     """
     Replaces all .py files with the cached .pyc files from __pycache__.
     If out_folder is provided, doesn't delete any existing Python files, simply
     creates the new `.pyc` files in the new location.
     """
-    compileall.compile_dir(folder, quiet=1, force=True)
+    if optimize is not None:
+        optimization = [eval(opt) for opt in optimize.split(',')]
+
+    compileall.compile_dir(folder, quiet=1, force=True,
+                           optimize=optimization if optimize is not None else -1)
 
     if out_folder is None:
         out_folder = folder
@@ -28,7 +34,9 @@ def replace_py_with_pyc(folder: str, out_folder: str | None = None) -> list[str]
         subfolder = os.path.join(folder, name)
         out_subfolder = os.path.join(out_folder, name)
         if os.path.isdir(subfolder):
-            created_pyc_files.extend(replace_py_with_pyc(subfolder, out_subfolder))
+            created_pyc_files.extend(replace_py_with_pyc(subfolder,
+                                                         out_subfolder,
+                                                         optimize=optimize))
 
     pycache_path = os.path.join(folder, "__pycache__")
     if not os.path.isdir(pycache_path):
@@ -46,7 +54,10 @@ def replace_py_with_pyc(folder: str, out_folder: str | None = None) -> list[str]
             continue
 
         filename = file.removesuffix(".py")
-        pycache_filename = f"{filename}.cpython-3{sys.version_info.minor}.pyc"
+        if optimize:
+            pycache_filename = f"{filename}.cpython-3{sys.version_info.minor}.opt-{optimization[-1]}.pyc"
+        else:
+            pycache_filename = f"{filename}.cpython-3{sys.version_info.minor}.pyc"
         pyc_path = os.path.join(pycache_path, pycache_filename)
         if not os.path.exists(pyc_path):
             print(f"{yellow('NOTE:')} {pyc_path} not found, skipping.")
@@ -61,7 +72,11 @@ def replace_py_with_pyc(folder: str, out_folder: str | None = None) -> list[str]
         if folder == out_folder:
             os.remove(filepath)
 
-    # Finally delete the pycache, it should be empty.
-    os.rmdir(pycache_path)
+    # Finally delete the pycache, it should be empty
+    # with only one or no optimization.
+    if optimize:
+        shutil.rmtree(pycache_path)
+    else:
+        os.rmdir(pycache_path)
 
     return created_pyc_files

@@ -9,6 +9,7 @@ from pycify import replace_py_with_pyc
 class PycifyArgs:
     directory: str
     out_dir: str
+    optimize: str
 
 
 def cli(argv: list[str] | None = None) -> None:
@@ -22,5 +23,15 @@ def cli(argv: list[str] | None = None) -> None:
             "Defaults to replacing the existing `.py` files."
         ),
     )
+    parser.add_argument(
+        "--optimize",
+        help=(
+            "Specifies the optimization level for the compiler."
+            "Accepts a sequence of optimization levels which lead to multiple "
+            "compilations of one .py file in one call."
+            "For example: 1,2 or 2,1,1,2 or 2"
+        )
+    )
     args = parser.parse_args(argv, namespace=PycifyArgs)
-    replace_py_with_pyc(args.directory, out_folder=args.out_dir)
+    replace_py_with_pyc(args.directory, out_folder=args.out_dir,
+                        optimize=args.optimize)
